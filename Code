@@ -1,0 +1,57 @@
+METHOD kur_cevrim.
+  BREAK-POINT.
+
+  DATA: ls_data      TYPE zbpcg_satis_s ,
+        lt_data      TYPE zbpcg_satis_t ,
+        ls_result    TYPE zbpcg_satis_s ,
+        lt_result    TYPE zbpcg_satis_t .
+
+  DATA: lo_parametre TYPE REF TO zcl_bpc_gider .
+
+**********************************************************************
+**Read Parameter Application
+**********************************************************************
+  DATA: lt_parametre TYPE zbpcg_parametre_t,
+        ls_parametre TYPE zbpcg_parametre.
+
+  CREATE OBJECT lo_parametre.
+
+  "*-->Read Currency..
+  CALL METHOD lo_parametre->zread_parametre
+    EXPORTING
+      iv_versiyon  = iv_version
+    IMPORTING
+      et_parametre = lt_parametre.
+
+************************************************************
+
+  LOOP AT it_data INTO ls_data.
+    IF ls_data-para_birimi = 'LC' .
+      ls_data-signeddata = 0 .
+      COLLECT ls_data INTO et_result .
+    ENDIF.
+  ENDLOOP.
+
+  lt_data[] = it_data[] .
+  SORT lt_data BY donem para_birimi .
+
+  LOOP AT it_data INTO ls_data.
+    "*-> Read Parameters
+    IF ls_data-donem NE ls_parametre-donem OR ls_data-para_birimi NE ls_parametre-para_birimi OR ls_data-versiyon NE ls_parametre-versiyon.
+      CLEAR: ls_parametre.
+      READ TABLE lt_parametre INTO ls_parametre WITH KEY donem = ls_data-donem
+                                                         versiyon = ls_data-versiyon
+                                                         para_birimi = ls_data-para_birimi
+                                                         parametre_klm = 'AVG'
+                                                         sirket_kodu = '0011' .
+
+
+    ENDIF.
+    "*-> Currency Conversion
+    ls_result = ls_data .
+    ls_result-para_birimi = 'LC' .
+    ls_result-signeddata = ls_data-signeddata * ls_parametre-signeddata .
+    COLLECT ls_result INTO et_result .
+  ENDLOOP.
+
+ENDMETHOD.
